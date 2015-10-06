@@ -1,5 +1,6 @@
 import rhomb
 import math
+import log
 import numpy as np
 from PIL import Image
 from PIL import ImageDraw
@@ -13,6 +14,14 @@ class Kagome():
         latticePoints ... (int, int) lattice points in x and y direction
         imageSize ... (int, int) dimension of the resulting output images
         outputFolder ... str location of the folder to save images"""
+
+        # logging related stuff
+        self.outputFolder = outputFolder
+        self.log = log.Logger("Log", self.outputFolder)
+        self.log.log_text("Program initialized")
+        self.log_conversion = log.Logger("conversion", self.outputFolder)
+        self.log.log_text("Conversion log created")
+
         self.latticeWidth = latticeWidth
         # this is a simple mathematical relation of hexagon width to height
         self.latticeHeight = 1/2 * 2 * math.sqrt((latticeWidth / 2) ** 2 -
@@ -27,7 +36,6 @@ class Kagome():
         # stuff for drawing and image saving
         self.image = Image.new('RGB', imageSize, 'white')
         self.draw = ImageDraw.Draw(self.image)
-        self.outputFolder = outputFolder
         self.rhombColor = 'red'
 
         # centering the image on the tiling
@@ -46,6 +54,12 @@ class Kagome():
             self.lattice[y] = np.empty(self.latticePointsX / (y % 2 + 1), dtype=object)
             for x in range(len(self.lattice[y])):
                 self.lattice[y][x] = rhomb.Rhomb(x, y)
+        self.log.log_text("lattice created")
+
+
+    def __del__(self):
+        """Destructor, cleaning up :) """
+        self.log.log_text("Destructor called")
 
 
     def debug_draw_neighbors(self, x, y):
