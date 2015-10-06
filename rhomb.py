@@ -22,23 +22,23 @@ class Rhomb():
         if y % 4 == 0:
             self.fn[0] = "%s;%s" % (x - 1, y)
             self.fn[1] = "%s;%s" % (x + 1, y)
-            self.fn[2] = "%s;%s" % (int(x / 2) - (1 - x % 2), y - 1)
-            self.fn[3] = "%s;%s" % (int(x / 2), y + 1)
+            self.fn[2] = "%s;%s" % (int(x / 2), y - 1)
+            self.fn[3] = "%s;%s" % (int(x / 2) + (x % 2), y + 1)
         elif y % 4 == 1:
+            self.fn[0] = "%s;%s" % (x * 2 - 1, y - 1)
+            self.fn[1] = "%s;%s" % (x * 2, y - 1)
+            self.fn[2] = "%s;%s" % (x * 2 - 1, y + 1)
+            self.fn[3] = "%s;%s" % (x * 2, y + 1)
+        elif y % 4 == 2:
+            self.fn[0] = "%s;%s" % (x - 1, y)
+            self.fn[1] = "%s;%s" % (x + 1, y)
+            self.fn[2] = "%s;%s" % (int(x / 2) + (x % 2), y - 1)
+            self.fn[3] = "%s;%s" % (int(x / 2), y + 1)
+        elif y % 4 == 3:
             self.fn[0] = "%s;%s" % (x * 2, y - 1)
             self.fn[1] = "%s;%s" % (x * 2 + 1, y - 1)
             self.fn[2] = "%s;%s" % (x * 2, y + 1)
             self.fn[3] = "%s;%s" % (x * 2 + 1, y + 1)
-        elif y % 4 == 2:
-            self.fn[0] = "%s;%s" % (x - 1, y)
-            self.fn[1] = "%s;%s" % (x + 1, y)
-            self.fn[2] = "%s;%s" % (int(x / 2), y - 1)
-            self.fn[3] = "%s;%s" % (int(x / 2) - (1 - x % 2), y + 1)
-        elif y % 4 == 3:
-            self.fn[0] = "%s;%s" % (x * 2 + 1, y - 1)
-            self.fn[1] = "%s;%s" % (x * 2 + 2, y - 1)
-            self.fn[2] = "%s;%s" % (x * 2 + 1, y + 1)
-            self.fn[3] = "%s;%s" % (x * 2 + 2, y + 1)
 
 
 def lying(x, y, latticeWidth, latticeHeight):
