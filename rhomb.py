@@ -1,3 +1,46 @@
+import numpy as np
+
+class Rhomb():
+    """Representation of a node on the Kagome lattice."""
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.identifier = "%s;%s" % (x, y)
+        self.reacted = False
+
+        # calculate first neighbors
+        self.fn = np.empty(4, dtype=object)
+        # identify line
+        """
+        _________________   0
+        \/  \/  \/  \/  \   1
+        /\__/\__/\__/\__/   2
+        ‾‾\/‾‾\/‾‾\/‾‾\/‾   3
+        __/\__/\__/\__/\_
+        """
+        if y % 4 == 0:
+            self.fn[0] = "%s;%s" % (x - 1, y)
+            self.fn[1] = "%s;%s" % (x + 1, y)
+            self.fn[2] = "%s;%s" % (int(x / 2) - (1 - x % 2), y - 1)
+            self.fn[3] = "%s;%s" % (int(x / 2), y + 1)
+        elif y % 4 == 1:
+            self.fn[0] = "%s;%s" % (x * 2, y - 1)
+            self.fn[1] = "%s;%s" % (x * 2 + 1, y - 1)
+            self.fn[2] = "%s;%s" % (x * 2, y + 1)
+            self.fn[3] = "%s;%s" % (x * 2 + 1, y + 1)
+        elif y % 4 == 2:
+            self.fn[0] = "%s;%s" % (x - 1, y)
+            self.fn[1] = "%s;%s" % (x + 1, y)
+            self.fn[2] = "%s;%s" % (int(x / 2), y - 1)
+            self.fn[3] = "%s;%s" % (int(x / 2) - (1 - x % 2), y + 1)
+        elif y % 4 == 3:
+            self.fn[0] = "%s;%s" % (x * 2 + 1, y - 1)
+            self.fn[1] = "%s;%s" % (x * 2 + 2, y - 1)
+            self.fn[2] = "%s;%s" % (x * 2 + 1, y + 1)
+            self.fn[3] = "%s;%s" % (x * 2 + 2, y + 1)
+
+
 def lying(x, y, latticeWidth, latticeHeight):
     """Vertex coordinates for a lying rhomb."""
     """      v4
