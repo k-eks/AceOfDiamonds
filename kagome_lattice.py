@@ -1,6 +1,7 @@
 import rhomb
 import math
 import log
+import random
 import numpy as np
 from PIL import Image
 from PIL import ImageDraw
@@ -48,13 +49,18 @@ class Kagome():
         else:
             self.imageYOffset = 0
 
-        # generate the lattice
-        self.lattice = np.empty(self.latticePointsY, dtype=object)
+        # generate rhomb lattice
+        self.numberAllLatticePoints = 0
+        self.lattice = self.generate_lattice_array()
         for y in range(len(self.lattice)):
-            self.lattice[y] = np.empty(self.latticePointsX / (y % 2 + 1), dtype=object)
             for x in range(len(self.lattice[y])):
                 self.lattice[y][x] = rhomb.Rhomb(x, y)
+                self.numberAllLatticePoints += 1
         self.log.log_text("lattice created")
+
+        # generate reaction points
+        self.reactionSites = self.generate_lattice_array()
+        self.reset_reaction_sites()
 
 
     def __del__(self):
@@ -65,16 +71,23 @@ class Kagome():
     def debug_draw_neighbors(self, x, y):
         """Debug function. Draws all first neighbors."""
         neighbors = self.lattice[y][x].fn
-        for s in neighbors:
-            u, v = self.identifier_to_coordinates(s)
-            self.rhomb_at_kagome(u, v)
+        for t in neighbors:
+            self.rhomb_at_kagome(t[0], t[1])
 
 
-    def identifier_to_coordinates(self, identifier):
-        """Turns an identifier string into two integer Kagome coordinates.
-        returns ... x, y as Kagome lattice points"""
-        c = identifier.split(';')
-        return int(c[0]), int(c[1])
+    def reset_reaction_sites(self):
+        """Resets the array which keeps track of the reactions that have taken place in a cycle."""
+        for y in range(len(self.lattice)):
+            self.reactionSites[y][:] = False
+
+
+    def generate_lattice_array(self):
+        """Creates an empty numpy array with all lattice points.
+        return ... array[array] emtpy array with correct indices"""
+        lattice = np.empty(self.latticePointsY, dtype=object)
+        for y in range(len(lattice)):
+            lattice[y] = np.empty(self.latticePointsX / (y % 2 + 1), dtype=object)
+        return lattice
 
 
     def kag_to_screen(self, x, y):
@@ -101,12 +114,12 @@ class Kagome():
         draw_x, draw_y = self.kag_to_screen(x, y) # converting to drawing coordinates
         # figure out the right orientation
         if y % 2 == 1:
-            self.draw.polygon(rhomb.lying(draw_x, draw_y, self.latticeWidth, self.latticeHeight), 'red')#self.rhombColor)
+            self.draw.polygon(rhomb.lying(draw_x, draw_y, self.latticeWidth, self.latticeHeight), self.rhombColor)
         elif ((y % 2 == 0 and x % 2 == 1 and y % 4 == 0) or
               (y % 2 == 0 and x % 2 == 0 and y % 4 == 2)):
-            self.draw.polygon(rhomb.right(draw_x, draw_y, self.latticeWidth, self.latticeHeight), 'blue')#self.rhombColor)
+            self.draw.polygon(rhomb.right(draw_x, draw_y, self.latticeWidth, self.latticeHeight), self.rhombColor)
         else:
-            self.draw.polygon(rhomb.left(draw_x, draw_y, self.latticeWidth, self.latticeHeight), 'lime')#self.rhombColor)
+            self.draw.polygon(rhomb.left(draw_x, draw_y, self.latticeWidth, self.latticeHeight), self.rhombColor)
 
 
     def draw_tiling(self):
@@ -122,3 +135,40 @@ class Kagome():
                     self.draw.polygon(rhomb.right(draw_x, draw_y, self.latticeWidth, self.latticeHeight), outline=1)
                 else:
                     self.draw.polygon(rhomb.left(draw_x, draw_y, self.latticeWidth, self.latticeHeight), outline=1)
+
+
+    def draw_image(self):
+        """Draws an image of the current state."""
+        for y in range(len(self.lattice)):
+            for x in range(len(self.lattice[y])):
+                r = self.lattice[y][x]
+                if r.reacted:
+                    self.rhomb_at_kagome(r.x, r.y)
+        self.draw_tiling()
+
+
+    def save_image(self, cycle):
+        """Saves the current image.
+        cycle ... int number of the image, i.e. position in cycle"""
+        self.image.save(self.outputFolder + "%i.png" % cycle)
+
+
+    def model_random(self, tMax, omega):
+        self.log.log_text("Random model started")
+        count = 0
+        for t in range(tMax):
+            # single time step
+            for y in range(len(self.lattice)):
+                for x in range(len(self.lattice[y])):
+                    r = self.lattice[y][x]
+                    # only do something if the site is not reacted
+                    if not r.reacted:
+                        # check if a reaction takes place
+                        if random.random() < omega:
+                            r.reacted = True
+                            count += 1
+                            self.rhomb_at_kagome(r.x, r.y)
+            self.log_conversion.log_xy(t, count / self.numberAllLatticePoints)
+            self.draw_tiling()
+            self.save_image(t)
+        self.log.log_text("Random model ended")
