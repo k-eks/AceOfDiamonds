@@ -40,14 +40,9 @@ class Kagome():
         self.rhombColor = 'red'
 
         # centering the image on the tiling
-        if self.latticePointsX * self.latticeWidth > self.image.size[0]:
-            self.imageXOffset = int((self.latticePointsX * self.latticeWidth - self.image.size[0]) / 4)
-        else:
-            self.imageXOffset = 0
-        if self.latticePointsY * self.latticeHeight > self.image.size[0]:
-            self.imageYOffset = int((self.latticePointsY * self.latticeHeight - self.image.size[1]) / 2)
-        else:
-            self.imageYOffset = 0
+        self.imageXOffset = int((self.latticePointsX / 2 * self.latticeWidth - self.image.size[0]) / 2)
+        self.imageYOffset = int((self.latticePointsY * self.latticeHeight - self.image.size[1]) / 2)
+
 
         # generate rhomb lattice
         self.numberAllLatticePoints = 0
@@ -73,6 +68,33 @@ class Kagome():
         neighbors = self.lattice[y][x].fn
         for t in neighbors:
             self.rhomb_at_kagome(t[0], t[1])
+
+
+    def calculate_Nth_neighbor(self, nMinus1, nMinus2):
+        """Calculates the second and higher neighbors. The order of the neighbors is given by N
+        nMinus1 ... array of tuples of the N - 2 neighbors
+        nMinus2 ... array of tuples of the N - 2 neighbors
+        returns a tuple array of the coordinates of the Nth neighbors"""
+        everything = [] # holds all neighbors of the first nightbors
+        toremove = [] # holds all items which should be removed
+        for t in nMinus2:
+            # tuples get turned into string for numpy to handle it
+            toremove.append(str(t))
+        for t in nMinus1:
+            # tuples get turned into string for numpy to handle it
+            toremove.append(str(t))
+            for t2 in self.lattice[t[1]][t[0]].fn:
+                everything.append(str(t2)) # tuples get turned into string for numpy to handle it
+        everything = np.array(everything)
+        toremove = np.array(toremove)
+        reduced = np.setdiff1d(everything, toremove) # this numpy function cant handle tuples
+
+        # reversing the string array into a tuple array
+        complete = np.empty(len(reduced), dtype=object)
+        for i in range(len(reduced)):
+            complete[i] = eval(reduced[i])
+        return complete
+
 
 
     def reset_reaction_sites(self):
@@ -122,6 +144,14 @@ class Kagome():
             self.draw.polygon(rhomb.left(draw_x, draw_y, self.latticeWidth, self.latticeHeight), self.rhombColor)
 
 
+    def get_random_point(self):
+        """Generates a random coordinate pair from the lattice.
+        return ... tuple x,y kagome lattice coordinates"""
+        y = random.randint(0, len(self.lattice) - 1)
+        x = random.randint(0, len(self.lattice[y]))
+        return (x, y)
+
+
     def draw_tiling(self):
         """Creates an outline overlay of the rhombille tiling."""
         for y in range(len(self.lattice)):
@@ -150,7 +180,7 @@ class Kagome():
     def save_image(self, cycle):
         """Saves the current image.
         cycle ... int number of the image, i.e. position in cycle"""
-        self.image.save(self.outputFolder + "%i.png" % cycle)
+        self.image.save(self.outputFolder + "%s.png" % cycle)
 
 
     def model_random(self, tMax, omega):
@@ -158,6 +188,7 @@ class Kagome():
         count = 0
         for t in range(tMax):
             # single time step
+            print("Current step: %i of %i" % (t, tMax), end='\r')
             for y in range(len(self.lattice)):
                 for x in range(len(self.lattice[y])):
                     r = self.lattice[y][x]
@@ -171,4 +202,54 @@ class Kagome():
             self.log_conversion.log_xy(t, count / self.numberAllLatticePoints)
             self.draw_tiling()
             self.save_image(t)
+        print("\nDone!")
         self.log.log_text("Random model ended")
+
+
+    def model_nucleation1(self, tMax, omega, seeds):
+        self.log.log_text("Nucleation1 model started")
+        count = 0
+        # generate seeds
+        self.rhombColor = 'blue'
+        for i in range(seeds):
+            coords = self.get_random_point()
+            self.lattice[coords[1]][coords[0]].reacted = True
+            self.rhomb_at_kagome(coords[0], coords[1])
+            count += 1
+        self.rhombColor = 'red'
+        self.draw_tiling()
+        self.save_image("start")
+
+        for t in range(tMax):
+            # single time step
+            print("Current step: %i of %i" % (t, tMax - 1), end='\r')
+            for y in range(len(self.lattice)):
+                for x in range(len(self.lattice[y])):
+                    r = self.lattice[y][x]
+                    # only do something if the site is not reacted
+                    if not r.reacted:
+                        # check if a reaction takes place
+                        if random.random() < omega:
+                            # check for neighbors
+                            neighbor = False
+                            for n in r.fn:
+                                try:
+                                    if self.lattice[n[1]][n[0]].reacted:
+                                        neighbor = True
+                                except IndexError:
+                                    pass
+                            if neighbor:
+                                self.reactionSites[r.y][r.x] = True
+                                count += 1
+                                self.rhomb_at_kagome(r.x, r.y)
+            # let the reaction take place
+            for y in range(len(self.reactionSites)):
+                for x in range(len(self.reactionSites[y])):
+                    if self.reactionSites[y][x]:
+                        self.lattice[y][x].reacted = True
+            self.reset_reaction_sites()
+            self.log_conversion.log_xy(t, count / self.numberAllLatticePoints)
+            self.draw_tiling()
+            self.save_image(t)
+        print("\nDone!")
+        self.log.log_text("Nucleation1 model ended")

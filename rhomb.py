@@ -40,6 +40,12 @@ class Rhomb():
             self.fn[2] = (x * 2, y + 1)
             self.fn[3] = (x * 2 + 1, y + 1)
 
+        # "set up" of other neighbors
+        self.n2 = None
+        self.n3 = None
+        self.n4 = None
+        self.n5 = None
+
 
 def lying(x, y, latticeWidth, latticeHeight):
     """Vertex coordinates for a lying rhomb."""
