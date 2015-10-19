@@ -6,7 +6,7 @@ class Rhomb():
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.identifier = (x, y)
+        self.identifier = [(x, y)]
         self.reacted = False
 
         # calculate first neighbors
@@ -41,10 +41,8 @@ class Rhomb():
             self.fn[3] = (x * 2 + 1, y + 1)
 
         # "set up" of other neighbors
-        self.n2 = None
-        self.n3 = None
-        self.n4 = None
-        self.n5 = None
+        self.neighbors = np.empty(12, dtype=object)
+        self.neighbors[0] = self.fn
 
 
 def lying(x, y, latticeWidth, latticeHeight):

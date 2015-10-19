@@ -1,6 +1,7 @@
 import rhomb
 import math
 import log
+import corr
 import random
 import numpy as np
 from PIL import Image
@@ -51,7 +52,9 @@ class Kagome():
             for x in range(len(self.lattice[y])):
                 self.lattice[y][x] = rhomb.Rhomb(x, y)
                 self.numberAllLatticePoints += 1
-        self.log.log_text("lattice created")
+        self.rhombCount = self.latticePointsY * self.latticePointsX / 2 + self.latticePointsY * self.latticePointsX / 4
+        self.log.log_text("Lattice created")
+        self.log.log_text("Created %i rhombs" % self.rhombCount)
 
         # generate reaction points
         self.reactionSites = self.generate_lattice_array()
@@ -69,6 +72,22 @@ class Kagome():
         for t in neighbors:
             self.rhomb_at_kagome(t[0], t[1])
 
+    def getRhomb(self, x, y):
+        """Gets a rhomb at the specific coordinates. This also ensures the torus like shape of the sheet.
+        x ... int x coordinate
+        y ... int y coordinate
+        retruns a rhomb at the given lattice points"""
+        if x < 0:
+            x = x + self.latticePointsX
+        if y < 0:
+            y = y + self.latticePointsY
+        if x % 2 == 1:
+            x = x % self.latticePointsX
+        else:
+            x = x % (self.latticePointsX / 2)
+        y = y % self.latticePointsY
+        return self.lattice[y][x]
+
 
     def calculate_Nth_neighbor(self, nMinus1, nMinus2):
         """Calculates the second and higher neighbors. The order of the neighbors is given by N
@@ -83,7 +102,7 @@ class Kagome():
         for t in nMinus1:
             # tuples get turned into string for numpy to handle it
             toremove.append(str(t))
-            for t2 in self.lattice[t[1]][t[0]].fn:
+            for t2 in self.getRhomb(t[0], t[1]).fn:
                 everything.append(str(t2)) # tuples get turned into string for numpy to handle it
         everything = np.array(everything)
         toremove = np.array(toremove)
@@ -94,7 +113,6 @@ class Kagome():
         for i in range(len(reduced)):
             complete[i] = eval(reduced[i])
         return complete
-
 
 
     def reset_reaction_sites(self):
@@ -181,6 +199,35 @@ class Kagome():
         """Saves the current image.
         cycle ... int number of the image, i.e. position in cycle"""
         self.image.save(self.outputFolder + "%s.png" % cycle)
+
+
+    def model_neighbor_correlations(self, correlations):
+        # calculating the highest neighbor correlations
+        maxc = 1
+        for i in correlations:
+            maxc = max(maxc, i.order)
+        print("Highest order of neighbors is %i, calculating neighbors..." % maxc)
+
+        # calculating higher neighbors of rhombs
+        if maxc > 1:
+            count = 0
+            for y in range(len(self.lattice)):
+                for x in range(len(self.lattice[y])):
+                    count += 1
+                    print("Working on rhomb %i of %i" % (count, self.rhombCount), end='\r')
+                    rhomb = self.lattice[y][x]
+                    completeShells = 1
+                    while completeShells < maxc:
+                        if completeShells == 1:
+                            nMinus1 = rhomb.neighbors[0]
+                            nMinus2 = rhomb.identifier
+                        elif completeShells == 2:
+                            nMinus1 = rhomb.neighbors[completeShells]
+                            nMinus2 = rhomb.neighbors[completeShells - 1]
+                        nth = self.calculate_Nth_neighbor(nMinus1, nMinus2)
+                        rhomb.neighbors[completeShells] = nth
+                        completeShells += 1
+        print("\nDone!")
 
 
     def model_random(self, tMax, omega):
