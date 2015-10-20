@@ -77,15 +77,22 @@ class Kagome():
         x ... int x coordinate
         y ... int y coordinate
         retruns a rhomb at the given lattice points"""
-        if x < 0:
-            x = x + self.latticePointsX
+        # check y
         if y < 0:
             y = y + self.latticePointsY
-        if x % 2 == 1:
-            x = x % self.latticePointsX
         else:
-            x = x % (self.latticePointsX / 2)
-        y = y % self.latticePointsY
+            y = y % self.latticePointsY
+
+        # check x
+        if x % 2 == 1:
+            divisor = 2
+        else:
+            divisor = 1
+        if x < 0:
+            x = x + int(self.latticePointsX / divisor)
+        else:
+            x = x % int(self.latticePointsX / divisor)
+
         return self.lattice[y][x]
 
 
@@ -201,7 +208,7 @@ class Kagome():
         self.image.save(self.outputFolder + "%s.png" % cycle)
 
 
-    def model_neighbor_correlations(self, correlations):
+    def model_neighbor_correlations(self, correlations, tMax, omega):
         # calculating the highest neighbor correlations
         maxc = 1
         for i in correlations:
@@ -215,19 +222,68 @@ class Kagome():
                 for x in range(len(self.lattice[y])):
                     count += 1
                     print("Working on rhomb %i of %i" % (count, self.rhombCount), end='\r')
-                    rhomb = self.lattice[y][x]
+                    rhomb = self.getRhomb(x, y)
                     completeShells = 1
                     while completeShells < maxc:
                         if completeShells == 1:
                             nMinus1 = rhomb.neighbors[0]
                             nMinus2 = rhomb.identifier
                         elif completeShells == 2:
-                            nMinus1 = rhomb.neighbors[completeShells]
-                            nMinus2 = rhomb.neighbors[completeShells - 1]
+                            nMinus1 = rhomb.neighbors[completeShells - 1]
+                            nMinus2 = rhomb.neighbors[completeShells - 2]
                         nth = self.calculate_Nth_neighbor(nMinus1, nMinus2)
                         rhomb.neighbors[completeShells] = nth
                         completeShells += 1
+        print("\nFinished with neighbors!")
+
+        print("Starting MC simulation...")
+        converted = 0
+        for t in range(tMax):
+            # single time step
+            print("Current step: %i of %i" % (t, tMax), end='\r')
+            for y in range(len(self.lattice)):
+                for x in range(len(self.lattice[y])):
+                    r = self.getRhomb(x, y)
+                    if not r.reacted:
+                        p = omega
+                        # modifiy omega according to correlations
+                        for c in correlations:
+                            count, amount = self.count_reacted_neighbors(r, c.order)
+                            # not counting amount yet
+                            if count > c.mult:
+                                p = p * c.prop
+                        if random.random() < p:
+                            self.reactionSites[y][x] = True
+                            converted += 1
+                            self.rhomb_at_kagome(r.x, r.y)
+            # let the reaction take place
+            for y in range(len(self.reactionSites)):
+                for x in range(len(self.reactionSites[y])):
+                    if self.reactionSites[y][x]:
+                        self.lattice[y][x].reacted = True
+            self.reset_reaction_sites()
+            self.log_conversion.log_xy(t, converted / self.numberAllLatticePoints)
+            #self.draw_tiling()
+            for y in range(len(self.lattice)):
+                for x in range(len(self.lattice[y])):
+                    r=self.getRhomb(x,y)
+                    self.rhomb_at_kagome(r.x, r.y)
+            self.save_image(t)
         print("\nDone!")
+        self.log.log_text("MC ended")
+
+
+
+    def count_reacted_neighbors(self, rhomb, order):
+        n = rhomb.neighbors[order - 1]
+        count = 0
+        amount = 0
+        for t in n:
+            amount += 1
+            if self.getRhomb(t[0], t[1]).reacted:
+                count += 1
+        return count, amount
+
 
 
     def model_random(self, tMax, omega):
