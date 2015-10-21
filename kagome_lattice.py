@@ -83,15 +83,15 @@ class Kagome():
         else:
             y = y % self.latticePointsY
 
-        # check x
-        if x % 2 == 1:
+        if x >= self.latticePointsX:
+            x = x % self.latticePointsX
+        # # check x
+        if y % 2 == 1:
             divisor = 2
         else:
             divisor = 1
-        if x < 0:
-            x = x + int(self.latticePointsX / divisor)
-        else:
-            x = x % int(self.latticePointsX / divisor)
+        if x >= (self.latticePointsX / divisor):
+            x = x % (self.latticePointsX / divisor)
 
         return self.lattice[y][x]
 
@@ -208,7 +208,7 @@ class Kagome():
         self.image.save(self.outputFolder + "%s.png" % cycle)
 
 
-    def model_neighbor_correlations(self, correlations, tMax, omega):
+    def model_neighbor_correlations(self, correlations, tMax, omega, seeds=0):
         # calculating the highest neighbor correlations
         maxc = 1
         for i in correlations:
@@ -236,8 +236,13 @@ class Kagome():
                         completeShells += 1
         print("\nFinished with neighbors!")
 
-        print("Starting MC simulation...")
         converted = 0
+        if seeds > 0:
+            print("Generating seeds")
+            self.generate_seeds(seeds)
+            converted += seeds
+
+        print("Starting MC simulation...")
         for t in range(tMax):
             # single time step
             print("Current step: %i of %i" % (t, tMax), end='\r')
@@ -250,8 +255,10 @@ class Kagome():
                         for c in correlations:
                             count, amount = self.count_reacted_neighbors(r, c.order)
                             # not counting amount yet
-                            if count > c.mult:
-                                p = p * c.prop
+                            if count >= c.multR and count <= c.maxiR:
+                                p = p * c.propR
+                            else:
+                                p = p * c.propU
                         if random.random() < p:
                             self.reactionSites[y][x] = True
                             converted += 1
@@ -263,11 +270,7 @@ class Kagome():
                         self.lattice[y][x].reacted = True
             self.reset_reaction_sites()
             self.log_conversion.log_xy(t, converted / self.numberAllLatticePoints)
-            #self.draw_tiling()
-            for y in range(len(self.lattice)):
-                for x in range(len(self.lattice[y])):
-                    r=self.getRhomb(x,y)
-                    self.rhomb_at_kagome(r.x, r.y)
+            self.draw_tiling()
             self.save_image(t)
         print("\nDone!")
         self.log.log_text("MC ended")
@@ -283,6 +286,17 @@ class Kagome():
             if self.getRhomb(t[0], t[1]).reacted:
                 count += 1
         return count, amount
+
+
+    def generate_seeds(self, seeds):
+        self.rhombColor = 'blue'
+        for i in range(seeds):
+            coords = self.get_random_point()
+            self.lattice[coords[1]][coords[0]].reacted = True
+            self.rhomb_at_kagome(coords[0], coords[1])
+        self.rhombColor = 'red'
+        self.draw_tiling()
+        self.save_image("start")
 
 
 
