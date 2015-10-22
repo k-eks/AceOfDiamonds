@@ -3,6 +3,8 @@ import numpy as np
 class Rhomb():
     """Representation of a node on the Kagome lattice."""
 
+    MAXNEIGHBORS = [4, 8, 14, 18, 22, 28, 30, 38, 38, 48]
+
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -41,7 +43,7 @@ class Rhomb():
             self.fn[3] = (x * 2 + 1, y + 1)
 
         # "set up" of other neighbors
-        self.neighbors = np.empty(12, dtype=object)
+        self.neighbors = np.empty(10, dtype=object)
         self.neighbors[0] = self.fn
 
 

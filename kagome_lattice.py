@@ -173,7 +173,7 @@ class Kagome():
         """Generates a random coordinate pair from the lattice.
         return ... tuple x,y kagome lattice coordinates"""
         y = random.randint(0, len(self.lattice) - 1)
-        x = random.randint(0, len(self.lattice[y]))
+        x = random.randint(0, len(self.lattice[y]) - 1)
         return (x, y)
 
 
@@ -221,14 +221,14 @@ class Kagome():
             for y in range(len(self.lattice)):
                 for x in range(len(self.lattice[y])):
                     count += 1
-                    print("Working on rhomb %i of %i" % (count, self.rhombCount), end='\r')
                     rhomb = self.getRhomb(x, y)
                     completeShells = 1
                     while completeShells < maxc:
+                        print("Working on neighbor %i of rhomb %i of %i      " % (completeShells + 1, count, self.rhombCount), end='\r')
                         if completeShells == 1:
                             nMinus1 = rhomb.neighbors[0]
                             nMinus2 = rhomb.identifier
-                        elif completeShells == 2:
+                        else:
                             nMinus1 = rhomb.neighbors[completeShells - 1]
                             nMinus2 = rhomb.neighbors[completeShells - 2]
                         nth = self.calculate_Nth_neighbor(nMinus1, nMinus2)
@@ -254,6 +254,7 @@ class Kagome():
                         # modifiy omega according to correlations
                         for c in correlations:
                             count, amount = self.count_reacted_neighbors(r, c.order)
+                            #print(c.order, count, amount)
                             # not counting amount yet
                             if count >= c.multR and count <= c.maxiR:
                                 p = p * c.propR
@@ -278,6 +279,10 @@ class Kagome():
 
 
     def count_reacted_neighbors(self, rhomb, order):
+        """Counts how mean of the neighbors of a given order have reacted.
+        rhomb ... rhomb center of neighbor finding
+        order ... order of the nearest neighbor
+        returns a tuple with the number of reacted neighbors and the total amount of neighbors"""
         n = rhomb.neighbors[order - 1]
         count = 0
         amount = 0
@@ -297,76 +302,3 @@ class Kagome():
         self.rhombColor = 'red'
         self.draw_tiling()
         self.save_image("start")
-
-
-
-    def model_random(self, tMax, omega):
-        self.log.log_text("Random model started")
-        count = 0
-        for t in range(tMax):
-            # single time step
-            print("Current step: %i of %i" % (t, tMax), end='\r')
-            for y in range(len(self.lattice)):
-                for x in range(len(self.lattice[y])):
-                    r = self.lattice[y][x]
-                    # only do something if the site is not reacted
-                    if not r.reacted:
-                        # check if a reaction takes place
-                        if random.random() < omega:
-                            r.reacted = True
-                            count += 1
-                            self.rhomb_at_kagome(r.x, r.y)
-            self.log_conversion.log_xy(t, count / self.numberAllLatticePoints)
-            self.draw_tiling()
-            self.save_image(t)
-        print("\nDone!")
-        self.log.log_text("Random model ended")
-
-
-    def model_nucleation1(self, tMax, omega, seeds):
-        self.log.log_text("Nucleation1 model started")
-        count = 0
-        # generate seeds
-        self.rhombColor = 'blue'
-        for i in range(seeds):
-            coords = self.get_random_point()
-            self.lattice[coords[1]][coords[0]].reacted = True
-            self.rhomb_at_kagome(coords[0], coords[1])
-            count += 1
-        self.rhombColor = 'red'
-        self.draw_tiling()
-        self.save_image("start")
-
-        for t in range(tMax):
-            # single time step
-            print("Current step: %i of %i" % (t, tMax - 1), end='\r')
-            for y in range(len(self.lattice)):
-                for x in range(len(self.lattice[y])):
-                    r = self.lattice[y][x]
-                    # only do something if the site is not reacted
-                    if not r.reacted:
-                        # check if a reaction takes place
-                        if random.random() < omega:
-                            # check for neighbors
-                            neighbor = False
-                            for n in r.fn:
-                                try:
-                                    if self.lattice[n[1]][n[0]].reacted:
-                                        neighbor = True
-                                except IndexError:
-                                    pass
-                            if neighbor:
-                                self.reactionSites[r.y][r.x] = True
-                                count += 1
-                                self.rhomb_at_kagome(r.x, r.y)
-            # let the reaction take place
-            for y in range(len(self.reactionSites)):
-                for x in range(len(self.reactionSites[y])):
-                    if self.reactionSites[y][x]:
-                        self.lattice[y][x].reacted = True
-            self.reset_reaction_sites()
-            self.log_conversion.log_xy(t, count / self.numberAllLatticePoints)
-            self.draw_tiling()
-            self.save_image(t)
-        print("\nDone!")
-        self.log.log_text("Nucleation1 model ended")
