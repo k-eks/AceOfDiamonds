@@ -1,0 +1,13 @@
+Pseudo code for the MC simulations
+
+-) create a point lattice where each point represents a dimer
+    remark: The topology is conform with hexagonal symmetry
+-) connect the west/east and north/south edge to create a torus
+-) Define reaction correlations between neighboring anthracene pairs and dimers
+-) Define how these correlations influence the reaction propability
+-) create a graph (as in graph theory) of the neighbors of each dimer pair
+-) run the simulation with a given reaction propability and run length
+    -> go over each pair and modifiy the reaction propability according to the correlations
+    -> Check against a random number if a reaction occurs and if so remember the location
+    -> when all locations are checked, change the state of the previously determined locations to "reacted"
+    -> repeat until the end of time is reached
