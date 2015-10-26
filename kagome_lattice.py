@@ -3,6 +3,7 @@ import math
 import log
 import corr
 import random
+import os.path
 import numpy as np
 from PIL import Image
 from PIL import ImageDraw
@@ -19,11 +20,17 @@ class Kagome():
 
         # logging related stuff
         self.outputFolder = outputFolder
+        # check if outputfolder exists and create it if not
+        if not os.path.exists(self.outputFolder):
+            os.makedirs(self.outputFolder)
+            print("created %s" % self.outputFolder)
+        # start the loggers
         self.log = log.Logger("Log", self.outputFolder)
         self.log.log_text("Program initialized")
         self.log_conversion = log.Logger("conversion", self.outputFolder)
         self.log.log_text("Conversion log created")
 
+        # set pixel dimensions for drawing
         self.latticeWidth = latticeWidth
         # this is a simple mathematical relation of hexagon width to height
         self.latticeHeight = 1/2 * 2 * math.sqrt((latticeWidth / 2) ** 2 -
@@ -209,6 +216,11 @@ class Kagome():
 
 
     def model_neighbor_correlations(self, correlations, tMax, omega, seeds=0):
+        """Run a Monte Carlo Simulation with neighbor correlations.
+        correlations ... array of Correlation objecta of the desired neighbor correlations
+        tMax ... int number of how many time steps the simulation should run, -1 runs until 100 percent concersion is reached
+        omega ... float base propability for dimerization
+        seeds ... int number of randomly created seeds before the model should run"""
         # calculating the highest neighbor correlations
         maxc = 1
         for i in correlations:
@@ -222,15 +234,18 @@ class Kagome():
                 for x in range(len(self.lattice[y])):
                     count += 1
                     rhomb = self.getRhomb(x, y)
-                    completeShells = 1
+                    completeShells = 1 # first neighbor are already known
+                    # run through increasing neighboring shells and fill them with neighbors
                     while completeShells < maxc:
                         print("Working on neighbor %i of rhomb %i of %i      " % (completeShells + 1, count, self.rhombCount), end='\r')
+                        # special case for the second neighbors
                         if completeShells == 1:
                             nMinus1 = rhomb.neighbors[0]
                             nMinus2 = rhomb.identifier
                         else:
                             nMinus1 = rhomb.neighbors[completeShells - 1]
                             nMinus2 = rhomb.neighbors[completeShells - 2]
+                        # remove duplicate and lower neighbors
                         nth = self.calculate_Nth_neighbor(nMinus1, nMinus2)
                         rhomb.neighbors[completeShells] = nth
                         completeShells += 1
@@ -243,9 +258,14 @@ class Kagome():
             converted += seeds
 
         print("Starting MC simulation...")
-        for t in range(tMax):
-            # single time step
-            print("Current step: %i of %i" % (t, tMax), end='\r')
+        runSimulation = True
+        t = 0
+        while runSimulation:
+            # each run is a single time step
+            if tMax == -1:
+                print("Current step: %i, conversion is %0.02f" % (t, converted / self.numberAllLatticePoints), end='\r')
+            else:
+                print("Current step: %i of %i" % (t, tMax), end='\r')
             for y in range(len(self.lattice)):
                 for x in range(len(self.lattice[y])):
                     r = self.getRhomb(x, y)
@@ -270,9 +290,19 @@ class Kagome():
                     if self.reactionSites[y][x]:
                         self.lattice[y][x].reacted = True
             self.reset_reaction_sites()
+            # write the convesion out
             self.log_conversion.log_xy(t, converted / self.numberAllLatticePoints)
+            # draw the image
             self.draw_tiling()
             self.save_image(t)
+            t += 1
+            # check if the simulation should continue
+            if tMax == -1:
+                if converted >= self.numberAllLatticePoints:
+                    runSimulation = False
+            else:
+                if t >= tMax:
+                    runSimulation = False
         print("\nDone!")
         self.log.log_text("MC ended")
 
@@ -286,17 +316,21 @@ class Kagome():
         n = rhomb.neighbors[order - 1]
         count = 0
         amount = 0
+        # count through the neighbors
         for t in n:
-            amount += 1
+            amount += 1 # counts all possible neighbors, independent of their state
             if self.getRhomb(t[0], t[1]).reacted:
-                count += 1
+                count += 1 # counts all reacted neighbors
         return count, amount
 
 
     def generate_seeds(self, seeds):
-        self.rhombColor = 'blue'
+        """Turns a given number of rhombs at random locations to a reacted state.
+        seeds ... int number of how many rhombs should be turned into the reacted state"""
+        self.rhombColor = 'blue' # change of color to highlight the random seeds
         for i in range(seeds):
             coords = self.get_random_point()
+            # set the new state and mark it
             self.lattice[coords[1]][coords[0]].reacted = True
             self.rhomb_at_kagome(coords[0], coords[1])
         self.rhombColor = 'red'
