@@ -29,6 +29,8 @@ class Kagome():
         self.log.log_text("Program initialized")
         self.log_conversion = log.Logger("conversion", self.outputFolder)
         self.log.log_text("Conversion log created")
+        self.log_pair = log.Logger("pair", self.outputFolder)
+        self.log.log_text("Pair correlation log created")
 
         # set pixel dimensions for drawing
         self.latticeWidth = latticeWidth
@@ -215,16 +217,20 @@ class Kagome():
         self.image.save(self.outputFolder + "%s.png" % cycle)
 
 
-    def model_neighbor_correlations(self, correlations, tMax, omega, seeds=0):
+    def model_neighbor_correlations(self, correlations, tMax, omega, plotPairCorrelations=0, seeds=0):
         """Run a Monte Carlo Simulation with neighbor correlations.
         correlations ... array of Correlation objecta of the desired neighbor correlations
         tMax ... int number of how many time steps the simulation should run, -1 runs until 100 percent concersion is reached
         omega ... float base propability for dimerization
+        pairCorrelations ... int number for how many neighbors pair correlations should be plotted, 0 -> derive from correlations
         seeds ... int number of randomly created seeds before the model should run"""
         # calculating the highest neighbor correlations
         maxc = 1
         for i in correlations:
             maxc = max(maxc, i.order)
+        # side check against the plotting
+        if plotPairCorrelations > 0:
+            maxc = max(maxc, plotPairCorrelations)
         print("Highest order of neighbors is %i, calculating neighbors..." % maxc)
 
         # calculating higher neighbors of rhombs
@@ -265,7 +271,7 @@ class Kagome():
             if tMax == -1:
                 print("Current step: %i, conversion is %0.02f" % (t, converted / self.numberAllLatticePoints), end='\r')
             else:
-                print("Current step: %i of %i" % (t, tMax), end='\r')
+                print("Current step: %i of %i" % (t + 1, tMax), end='\r')
             for y in range(len(self.lattice)):
                 for x in range(len(self.lattice[y])):
                     r = self.getRhomb(x, y)
@@ -295,6 +301,19 @@ class Kagome():
             # draw the image
             self.draw_tiling()
             self.save_image(t)
+
+            # log the pair correlations
+            logstring = str(t)
+            for n in range(maxc):
+                neighbors = 0
+                for y in range(len(self.lattice)):
+                    for x in range(len(self.lattice[y])):
+                        r = self.getRhomb(x, y)
+                        if r.reacted:
+                            neighbors += (self.count_reacted_neighbors(r, n + 1))[0]
+                logstring += ";%s" % (neighbors / self.numberAllLatticePoints)
+            self.log_pair.log_simple_text(logstring)
+
             t += 1
             # check if the simulation should continue
             if tMax == -1:

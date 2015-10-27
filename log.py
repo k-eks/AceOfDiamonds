@@ -19,9 +19,15 @@ class Logger():
 
 
     def log_text(self, message):
-        """Writes a textline to the logger.
+        """Writes a textline with time stamp to the logger.
         message ... string text to be written"""
         self.log.write(time.strftime("%c") + ": %s\n" % message)
+
+
+    def log_simple_text(self, message):
+        """Writes a textline to the logger.
+        message ... string text to be written"""
+        self.log.write("%s\n" % message)
 
 
     def log_xy(self, x, y):
