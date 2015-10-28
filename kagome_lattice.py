@@ -307,20 +307,29 @@ class Kagome():
             self.save_image(t)
 
             # log the pair correlations
-            logstring = "%s;%s"  % (t, converted / self.numberAllLatticePoints)
+            conversion = converted / self.numberAllLatticePoints
+            logstring = "%s;%s"  % (t, conversion)
+            # set up pair correlation counting array
+            neighborPairs = np.empty(maxc, dtype=object)
+            for i in range(maxc):
+                neighborPairs[i] = np.zeros(rhomb.MAXNEIGHBORS[i] + 1)
+
+            # counting reacted pairs
             for n in range(maxc):
-                neighbors = 0
                 for y in range(len(self.lattice)):
                     for x in range(len(self.lattice[y])):
                         r = self.getRhomb(x, y)
                         if r.reacted:
                             count, amount = (self.count_reacted_neighbors(r, n + 1))
-                            neighbors += count
-                # average number of neighbors
-                averageNeighbors = neighbors / self.numberAllLatticePoints
-                logstring += ";%s" % averageNeighbors
-                # propability to find a reacted rhomb at the neighbor distance
-                logstring += ";%s" % (averageNeighbors / amount)
+                            neighborPairs[n][count] += 1
+            # calculate percentage of neighbor pairs
+            for i in range(maxc):
+                liedetector = - conversion # for error checking
+                for n in range(len(neighborPairs[i])):
+                    propability = neighborPairs[i][n] / self.numberAllLatticePoints
+                    logstring += ";%s" % propability
+                    liedetector += propability # if everything works fine, all propabilities sum up to 0
+                logstring += ";%s" % liedetector
             self.log_pair.log_simple_text(logstring)
 
             t += 1
