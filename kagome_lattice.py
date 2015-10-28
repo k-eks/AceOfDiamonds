@@ -24,12 +24,14 @@ class Kagome():
         if not os.path.exists(self.outputFolder):
             os.makedirs(self.outputFolder)
             print("created %s" % self.outputFolder)
+        # create a name for the model
+        self.modelName = os.path.basename(os.path.normpath(self.outputFolder))
         # start the loggers
         self.log = log.Logger("Log", self.outputFolder)
         self.log.log_text("Program initialized")
         self.log_conversion = log.Logger("conversion", self.outputFolder)
         self.log.log_text("Conversion log created")
-        self.log_pair = log.Logger("pair", self.outputFolder)
+        self.log_pair = log.Logger("pair_%s" % self.modelName, self.outputFolder)
         self.log.log_text("Pair correlation log created")
 
         # set pixel dimensions for drawing
@@ -59,7 +61,7 @@ class Kagome():
         self.lattice = self.generate_lattice_array()
         for y in range(len(self.lattice)):
             for x in range(len(self.lattice[y])):
-                self.lattice[y][x] = rhomb.Rhomb(x, y)
+                self.lattice[y][x] = rhomb.Rhomb(x, y, self.latticePointsX, self.latticePointsY)
                 self.numberAllLatticePoints += 1
         self.rhombCount = self.latticePointsY * self.latticePointsX / 2 + self.latticePointsY * self.latticePointsX / 4
         self.log.log_text("Lattice created")
@@ -264,6 +266,8 @@ class Kagome():
             converted += seeds
 
         print("Starting MC simulation...")
+        # write header
+        self.log_pair.log_simple_text("t_%s;conversion" % self.modelName)
         runSimulation = True
         t = 0
         while runSimulation:
@@ -303,15 +307,20 @@ class Kagome():
             self.save_image(t)
 
             # log the pair correlations
-            logstring = str(t)
+            logstring = "%s;%s"  % (t, converted / self.numberAllLatticePoints)
             for n in range(maxc):
                 neighbors = 0
                 for y in range(len(self.lattice)):
                     for x in range(len(self.lattice[y])):
                         r = self.getRhomb(x, y)
                         if r.reacted:
-                            neighbors += (self.count_reacted_neighbors(r, n + 1))[0]
-                logstring += ";%s" % (neighbors / self.numberAllLatticePoints)
+                            count, amount = (self.count_reacted_neighbors(r, n + 1))
+                            neighbors += count
+                # average number of neighbors
+                averageNeighbors = neighbors / self.numberAllLatticePoints
+                logstring += ";%s" % averageNeighbors
+                # propability to find a reacted rhomb at the neighbor distance
+                logstring += ";%s" % (averageNeighbors / amount)
             self.log_pair.log_simple_text(logstring)
 
             t += 1

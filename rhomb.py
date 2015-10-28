@@ -5,7 +5,7 @@ class Rhomb():
 
     MAXNEIGHBORS = [4, 8, 14, 18, 22, 28, 30, 38, 38, 48]
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, latticeWidth, latticeHeight):
         self.x = x
         self.y = y
         self.identifier = [(x, y)]
@@ -41,6 +41,18 @@ class Rhomb():
             self.fn[1] = (x * 2 + 1, y - 1)
             self.fn[2] = (x * 2, y + 1)
             self.fn[3] = (x * 2 + 1, y + 1)
+
+        # make torus
+        for i in range(len(self.fn)):
+            t = self.fn[i]
+            if t[0] < 0:
+                self.fn[i] = (int(latticeWidth / int(1 + t[1] % 2) - 1), t[1])
+            elif t[0] >= latticeWidth / int(1 + t[1] % 2):
+                self.fn[i] = (0, t[1])
+            if t[1] < 0:
+                self.fn[i] = (t[0], latticeHeight - 1)
+            elif t[1] >= latticeHeight:
+                self.fn[i] = (t[0], 0)
 
         # "set up" of other neighbors
         self.neighbors = np.empty(10, dtype=object)
