@@ -1,8 +1,11 @@
 import numpy as np
 
 class Rhomb():
-    """Representation of a node on the Kagome lattice."""
+    """
+    Representation of a node on the Kagome lattice.
+    """
 
+    # maximum possible number of neighbors by neighbor order a single rhomb can have
     MAXNEIGHBORS = [4, 8, 14, 18, 22, 28, 30, 38, 38, 48]
 
     def __init__(self, x, y, latticeWidth, latticeHeight):
@@ -11,7 +14,7 @@ class Rhomb():
         self.identifier = [(x, y)]
         self.reacted = False
 
-        # calculate first neighbors
+        # calculate the location of all first neighbors
         self.fn = np.empty(4, dtype=object)
         # identify line
         """
@@ -60,8 +63,15 @@ class Rhomb():
 
 
 def lying(x, y, latticeWidth, latticeHeight):
-    """Vertex coordinates for a lying rhomb."""
-    """      v4
+    """
+    Vertex coordinates for a lying rhomb.
+    x ... int x-coordinate in the rhombile tiling
+    y ... int y-coordinate in the rhombile tiling
+    latticeWdith ... width of the image which on which is drawn
+    latticeHeight ... height of the image which on which is drawn
+    returns (int, int, int, int, int, int, int, int) four pairs of coordinates that define the polygon
+
+            v4
           __,.__
     v1  <´__  __`>  v3
             `´
@@ -82,8 +92,15 @@ def lying(x, y, latticeWidth, latticeHeight):
 
 
 def left(x, y, latticeWidth, latticeHeight):
-    """Vertex coordinates for a rhomb with a high vertice on the left side."""
-    """ v3
+    """
+    Vertex coordinates for a rhomb with a high vertice on the left side.
+    x ... int x-coordinate in the rhombile tiling
+    y ... int y-coordinate in the rhombile tiling
+    latticeWdith ... width of the image which on which is drawn
+    latticeHeight ... height of the image which on which is drawn
+    returns (int, int, int, int, int, int, int, int) four pairs of coordinates that define the polygon
+
+        v3
        |\
        | \  v2
        \ |
@@ -106,8 +123,15 @@ def left(x, y, latticeWidth, latticeHeight):
 
 
 def right(x, y, latticeWidth, latticeHeight):
-    """Vertex coordinates for a rhomb with a high vertice on the right side."""
-    """ v3
+    """
+    Vertex coordinates for a rhomb with a high vertice on the right side.
+    x ... int x-coordinate in the rhombile tiling
+    y ... int y-coordinate in the rhombile tiling
+    latticeWdith ... width of the image which on which is drawn
+    latticeHeight ... height of the image which on which is drawn
+    returns (int, int, int, int, int, int, int, int) four pairs of coordinates that define the polygon
+
+        v3
         /|
        / | v2
        | /
