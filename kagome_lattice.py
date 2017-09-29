@@ -144,7 +144,8 @@ class Kagome():
         return ... array[array] emtpy array with correct indices"""
         lattice = np.empty(self.latticePointsY, dtype=object)
         for y in range(len(lattice)):
-            lattice[y] = np.empty(self.latticePointsX / (y % 2 + 1), dtype=object)
+            lattice[y] = np.empty(int(self.latticePointsX / (y % 2 + 1)), dtype=object)
+            pass
         return lattice
 
 
@@ -219,7 +220,7 @@ class Kagome():
         self.image.save(self.outputFolder + "%s.png" % cycle)
 
 
-    def model_neighbor_correlations(self, correlations, tMax, omega, plotPairCorrelations=0, seeds=0):
+    def model_neighbor_correlations(self, correlations, tMax, omega, plotPairCorrelations=0, seeds=0, destroy=0):
         """Run a Monte Carlo Simulation with neighbor correlations.
         correlations ... array of Correlation objecta of the desired neighbor correlations
         tMax ... int number of how many time steps the simulation should run, -1 runs until 100 percent concersion is reached
@@ -276,61 +277,81 @@ class Kagome():
                 print("Current step: %i, conversion is %0.02f" % (t, converted / self.numberAllLatticePoints), end='\r')
             else:
                 print("Current step: %i of %i" % (t + 1, tMax), end='\r')
-            for y in range(len(self.lattice)):
-                for x in range(len(self.lattice[y])):
-                    r = self.getRhomb(x, y)
-                    if not r.reacted:
-                        p = omega
-                        # modifiy omega according to correlations
-                        for c in correlations:
-                            count, amount = self.count_reacted_neighbors(r, c.order)
-                            #print(c.order, count, amount)
-                            # not counting amount yet
-                            if count >= c.multR and count <= c.maxiR:
-                                p = p * c.propR
-                            else:
-                                p = p * c.propU
-                        if random.random() < p:
-                            self.reactionSites[y][x] = True
-                            converted += 1
-                            self.rhomb_at_kagome(r.x, r.y)
+            # for y in range(len(self.lattice)):
+            #     for x in range(len(self.lattice[y])):
+            x, y = self.get_random_point()
+            r = self.getRhomb(x, y)
+            if not r.reacted:
+                p = omega
+                # modifiy omega according to correlations
+                for c in correlations:
+                    count, amount = self.count_reacted_neighbors(r, c.order)
+                    #print(c.order, count, amount)
+                    # not counting amount yet
+                    if count >= c.multR and count <= c.maxiR:
+                        p = p * c.propR
+                    else:
+                        p = p * c.propU
+                if random.random() < p:
+                    self.reactionSites[y][x] = True
+                    self.lattice[y][x].reacted = True
+                    converted += 1
+                    #self.rhomb_at_kagome(r.x, r.y)
+                    # destroy a reacted dimer but only if there was a change in the crystal *************************
+                    if random.random() < destroy:
+                        converted -= 1
+                        allreacted = []
+                        for y in range(len(self.lattice)):
+                            for x in range(len(self.lattice[y])):
+                                if self.lattice[y][x].reacted:
+                                    allreacted.append((x,y))
+                        x, y = random.choice(allreacted)
+                        self.lattice[y][x].reacted = False
+                        self.getRhomb(x, y).reacted = False
+                        self.reactionSites[y][x] = False
+                    # ********************************************
             # let the reaction take place
-            for y in range(len(self.reactionSites)):
-                for x in range(len(self.reactionSites[y])):
-                    if self.reactionSites[y][x]:
-                        self.lattice[y][x].reacted = True
+            # for y in range(len(self.reactionSites)):
+            #     for x in range(len(self.reactionSites[y])):
+            #         if self.reactionSites[y][x]:
+            #             self.lattice[y][x].reacted = True
             self.reset_reaction_sites()
             # write the convesion out
-            self.log_conversion.log_xy(t, converted / self.numberAllLatticePoints)
+            if t % 100 == 0:
+                self.log_conversion.log_xy(t, converted / self.numberAllLatticePoints)
+                self.image = Image.new('RGB', self.image.size, 'white')
+                self.draw = ImageDraw.Draw(self.image)
+                self.draw_image()
+                self.save_image(t)
             # draw the image
-            self.draw_tiling()
-            self.save_image(t)
+            # self.draw_tiling()
+            # self.save_image(t)
 
             # log the pair correlations
-            conversion = converted / self.numberAllLatticePoints
-            logstring = "%s;%s"  % (t, conversion)
-            # set up pair correlation counting array
-            neighborPairs = np.empty(maxc, dtype=object)
-            for i in range(maxc):
-                neighborPairs[i] = np.zeros(rhomb.MAXNEIGHBORS[i] + 1)
+            # conversion = converted / self.numberAllLatticePoints
+            # logstring = "%s;%s"  % (t, conversion)
+            # # set up pair correlation counting array
+            # neighborPairs = np.empty(maxc, dtype=object)
+            # for i in range(maxc):
+            #     neighborPairs[i] = np.zeros(rhomb.MAXNEIGHBORS[i] + 1)
 
-            # counting reacted pairs
-            for n in range(maxc):
-                for y in range(len(self.lattice)):
-                    for x in range(len(self.lattice[y])):
-                        r = self.getRhomb(x, y)
-                        if r.reacted:
-                            count, amount = (self.count_reacted_neighbors(r, n + 1))
-                            neighborPairs[n][count] += 1
-            # calculate percentage of neighbor pairs
-            for i in range(maxc):
-                liedetector = - conversion # for error checking
-                for n in range(len(neighborPairs[i])):
-                    propability = neighborPairs[i][n] / self.numberAllLatticePoints
-                    logstring += ";%s" % propability
-                    liedetector += propability # if everything works fine, all propabilities sum up to 0
-                logstring += ";%s" % liedetector
-            self.log_pair.log_simple_text(logstring)
+            # # counting reacted pairs
+            # for n in range(maxc):
+            #     for y in range(len(self.lattice)):
+            #         for x in range(len(self.lattice[y])):
+            #             r = self.getRhomb(x, y)
+            #             if r.reacted:
+            #                 count, amount = (self.count_reacted_neighbors(r, n + 1))
+            #                 neighborPairs[n][count] += 1
+            # # calculate percentage of neighbor pairs
+            # for i in range(maxc):
+            #     liedetector = - conversion # for error checking
+            #     for n in range(len(neighborPairs[i])):
+            #         propability = neighborPairs[i][n] / self.numberAllLatticePoints
+            #         logstring += ";%s" % propability
+            #         liedetector += propability # if everything works fine, all propabilities sum up to 0
+            #     logstring += ";%s" % liedetector
+            # self.log_pair.log_simple_text(logstring)
 
             t += 1
             # check if the simulation should continue
