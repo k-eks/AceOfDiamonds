@@ -4,12 +4,28 @@ import log
 import corr
 import random
 import os.path
+import warnings
 import numpy as np
 from PIL import Image
 from PIL import ImageDraw
 
 class Kagome():
     """Creates a two-dimensional Kagome lattice and all tools for drawing on it."""
+
+    def deprecated(func):
+        """
+        This is a decorator which is used to mark functions as deprecated. It will result in a warning being emitted when the function is used.
+        taken from: https://wiki.python.org/moin/PythonDecoratorLibrary#CA-03ade855b8be998a2a4befd0f5f810b63abcfd7d_3
+        """
+        def new_func(*args, **kwargs):
+            warnings.warn("Call to deprecated function {}.".format(func.__name__),
+                          category=DeprecationWarning)
+            print("\nCall to deprecated function: {}.\n".format(func.__name__))
+            return func(*args, **kwargs)
+        new_func.__name__ = func.__name__
+        new_func.__doc__ = func.__doc__
+        new_func.__dict__.update(func.__dict__)
+        return new_func
 
     def __init__(self, latticeWidth, latticePoints, imageSize, outputFolder):
         """Constructor
@@ -69,7 +85,7 @@ class Kagome():
 
         # generate reaction points
         self.reactionSites = self.generate_lattice_array()
-        self.reset_reaction_sites()
+        # self.reset_reaction_sites()
 
 
     def __del__(self):
@@ -78,16 +94,22 @@ class Kagome():
 
 
     def debug_draw_neighbors(self, x, y):
-        """Debug function. Draws all first neighbors."""
+        """
+        Debug function. Draws all first neighbors.
+        x ... int x coordinate in the lattice
+        y ... int y coordinate in the lattice
+        """
         neighbors = self.lattice[y][x].fn
         for t in neighbors:
             self.rhomb_at_kagome(t[0], t[1])
 
     def getRhomb(self, x, y):
-        """Gets a rhomb at the specific coordinates. This also ensures the torus like shape of the sheet.
-        x ... int x coordinate
-        y ... int y coordinate
-        retruns a rhomb at the given lattice points"""
+        """
+        Gets a rhomb at the specific coordinates. This also ensures the torus like shape of the sheet.
+        x ... int x coordinate in the lattice
+        y ... int y coordinate in the lattice
+        retruns Rhomb a rhomb at the given lattice points
+        """
         # check y
         if y < 0:
             y = y + self.latticePointsY
@@ -108,10 +130,12 @@ class Kagome():
 
 
     def calculate_Nth_neighbor(self, nMinus1, nMinus2):
-        """Calculates the second and higher neighbors. The order of the neighbors is given by N
+        """
+        Calculates the second and higher neighbors. The order of the neighbors is given by N
         nMinus1 ... array of tuples of the N - 2 neighbors
         nMinus2 ... array of tuples of the N - 2 neighbors
-        returns a tuple array of the coordinates of the Nth neighbors"""
+        returns a tuple array of the coordinates of the Nth neighbors
+        """
         everything = [] # holds all neighbors of the first nightbors
         toremove = [] # holds all items which should be removed
         for t in nMinus2:
@@ -133,6 +157,7 @@ class Kagome():
         return complete
 
 
+    @deprecated
     def reset_reaction_sites(self):
         """Resets the array which keeps track of the reactions that have taken place in a cycle."""
         for y in range(len(self.lattice)):
@@ -140,20 +165,23 @@ class Kagome():
 
 
     def generate_lattice_array(self):
-        """Creates an empty numpy array with all lattice points.
-        return ... array[array] emtpy array with correct indices"""
+        """
+        Creates an empty numpy array with all lattice points.
+        return ... array[array] emtpy array with correct indices
+        """
         lattice = np.empty(self.latticePointsY, dtype=object)
         for y in range(len(lattice)):
             lattice[y] = np.empty(int(self.latticePointsX / (y % 2 + 1)), dtype=object)
-            pass
         return lattice
 
 
     def kag_to_screen(self, x, y):
-        """Transforms a kagome coordinate to a point on screen.
+        """
+        Transforms a kagome coordinate to a point on screen.
         x ... int x-coordinate of the Kagome lattice point
         y ... int y-coordinate of the Kagome lattice point
-        returns a tuple of (x, y) coordinates to draw on an image."""
+        returns a tuple of (x, y) coordinates to draw on an image.
+        """
         if y % 2 == 0:
             indent = self.latticeWidth / 4
             step = self.latticeWidth / 2
@@ -167,9 +195,11 @@ class Kagome():
 
 
     def rhomb_at_kagome(self, x, y):
-        """Draws a rhomb in the correct orientation at a given kagome lattice point.
+        """
+        Draws a rhomb in the correct orientation at a given kagome lattice point.
         x ... int x-coordinate of the Kagome lattice point
-        y ... int y-coordinate of the Kagome lattice point"""
+        y ... int y-coordinate of the Kagome lattice point
+        """
         draw_x, draw_y = self.kag_to_screen(x, y) # converting to drawing coordinates
         # figure out the right orientation
         if y % 2 == 1:
@@ -182,15 +212,19 @@ class Kagome():
 
 
     def get_random_point(self):
-        """Generates a random coordinate pair from the lattice.
-        return ... tuple x,y kagome lattice coordinates"""
+        """
+        Generates a random coordinate from the lattice.
+        return ... (int, int) kagome lattice coordinates
+        """
         y = random.randint(0, len(self.lattice) - 1)
         x = random.randint(0, len(self.lattice[y]) - 1)
         return (x, y)
 
 
     def draw_tiling(self):
-        """Creates an outline overlay of the rhombille tiling."""
+        """
+        Creates an outline overlay of the rhombille tiling and fills it with reacted rhombs.
+        """
         for y in range(len(self.lattice)):
             for x in range(len(self.lattice[y])):
                 draw_x, draw_y = self.kag_to_screen(x, y) # converting to drawing coordinates
@@ -205,7 +239,9 @@ class Kagome():
 
 
     def draw_image(self):
-        """Draws an image of the current state."""
+        """
+        Draws an image of the current state.
+        """
         for y in range(len(self.lattice)):
             for x in range(len(self.lattice[y])):
                 r = self.lattice[y][x]
@@ -215,26 +251,25 @@ class Kagome():
 
 
     def save_image(self, cycle):
-        """Saves the current image.
-        cycle ... int number of the image, i.e. position in cycle"""
+        """
+        Saves the current image.
+        cycle ... int number of the image, i.e. position number of the current Monte Carlo cycle.
+        """
         self.image.save(self.outputFolder + "%s.png" % cycle)
 
 
-    def model_neighbor_correlations(self, correlations, tMax, omega, plotPairCorrelations=0, seeds=0, destroy=0):
+    def model_neighbor_correlations(self, correlations, tMax, omega, seeds=0, imageCycle=0):
         """Run a Monte Carlo Simulation with neighbor correlations.
         correlations ... array of Correlation objecta of the desired neighbor correlations
         tMax ... int number of how many time steps the simulation should run, -1 runs until 100 percent concersion is reached
         omega ... float base propability for dimerization
         pairCorrelations ... int number for how many neighbors pair correlations should be plotted, 0 -> derive from correlations
-        seeds ... int number of randomly created seeds before the model should run"""
+        seeds ... int number of randomly created seeds before the model should run
+        imageCycle ... int determines after how many Monte Carlo iterations an image of the current state should be created and saved, a value of 0 turns it of"""
         # calculating the highest neighbor correlations
         maxc = 1
         for i in correlations:
             maxc = max(maxc, i.order)
-        # side check against the plotting
-        if plotPairCorrelations > 0:
-            maxc = max(maxc, plotPairCorrelations)
-        print("Highest order of neighbors is %i, calculating neighbors..." % maxc)
 
         # calculating higher neighbors of rhombs
         if maxc > 1:
@@ -297,64 +332,19 @@ class Kagome():
                     self.lattice[y][x].reacted = True
                     converted += 1
                     #self.rhomb_at_kagome(r.x, r.y)
-                    # destroy a reacted dimer but only if there was a change in the crystal *************************
-                    if random.random() < destroy:
-                        converted -= 1
-                        allreacted = []
-                        for y in range(len(self.lattice)):
-                            for x in range(len(self.lattice[y])):
-                                if self.lattice[y][x].reacted:
-                                    allreacted.append((x,y))
-                        x, y = random.choice(allreacted)
-                        self.lattice[y][x].reacted = False
-                        self.getRhomb(x, y).reacted = False
-                        self.reactionSites[y][x] = False
-                    # ********************************************
-            # let the reaction take place
-            # for y in range(len(self.reactionSites)):
-            #     for x in range(len(self.reactionSites[y])):
-            #         if self.reactionSites[y][x]:
-            #             self.lattice[y][x].reacted = True
-            self.reset_reaction_sites()
-            # write the convesion out
-            if t % 100 == 0:
-                self.log_conversion.log_xy(t, converted / self.numberAllLatticePoints)
-                self.image = Image.new('RGB', self.image.size, 'white')
-                self.draw = ImageDraw.Draw(self.image)
-                self.draw_image()
-                self.save_image(t)
-            # draw the image
-            # self.draw_tiling()
-            # self.save_image(t)
 
-            # log the pair correlations
-            # conversion = converted / self.numberAllLatticePoints
-            # logstring = "%s;%s"  % (t, conversion)
-            # # set up pair correlation counting array
-            # neighborPairs = np.empty(maxc, dtype=object)
-            # for i in range(maxc):
-            #     neighborPairs[i] = np.zeros(rhomb.MAXNEIGHBORS[i] + 1)
+            # save an image after ever imageCycle Monte Carlo interations
+            if imageCycle > 0:
+                if t % 100 == 0:
+                    self.log_conversion.log_xy(t, converted / self.numberAllLatticePoints)
+                    self.image = Image.new('RGB', self.image.size, 'white')
+                    self.draw = ImageDraw.Draw(self.image)
+                    self.draw_image()
+                    self.save_image(t)
 
-            # # counting reacted pairs
-            # for n in range(maxc):
-            #     for y in range(len(self.lattice)):
-            #         for x in range(len(self.lattice[y])):
-            #             r = self.getRhomb(x, y)
-            #             if r.reacted:
-            #                 count, amount = (self.count_reacted_neighbors(r, n + 1))
-            #                 neighborPairs[n][count] += 1
-            # # calculate percentage of neighbor pairs
-            # for i in range(maxc):
-            #     liedetector = - conversion # for error checking
-            #     for n in range(len(neighborPairs[i])):
-            #         propability = neighborPairs[i][n] / self.numberAllLatticePoints
-            #         logstring += ";%s" % propability
-            #         liedetector += propability # if everything works fine, all propabilities sum up to 0
-            #     logstring += ";%s" % liedetector
-            # self.log_pair.log_simple_text(logstring)
-
+            # step up in the Monte Carlo cycle
             t += 1
-            # check if the simulation should continue
+            # check if the simulation should continue or end
             if tMax == -1:
                 if converted >= self.numberAllLatticePoints:
                     runSimulation = False
@@ -364,13 +354,29 @@ class Kagome():
         print("\nDone!")
         self.log.log_text("MC ended")
 
+        # ****************************************************************************
+        # old code snippet about bond breaking
+        # destroy a reacted dimer but only if there was a change in the crystal
+        # if random.random() < destroy:
+        #     converted -= 1
+        #     allreacted = []
+        #     for y in range(len(self.lattice)):
+        #         for x in range(len(self.lattice[y])):
+        #             if self.lattice[y][x].reacted:
+        #                 allreacted.append((x,y))
+        #     x, y = random.choice(allreacted)
+        #     self.lattice[y][x].reacted = False
+        #     self.getRhomb(x, y).reacted = False
+        #     self.reactionSites[y][x] = False
+        # ****************************************************************************
+
 
 
     def count_reacted_neighbors(self, rhomb, order):
         """Counts how mean of the neighbors of a given order have reacted.
         rhomb ... rhomb center of neighbor finding
         order ... order of the nearest neighbor
-        returns a tuple with the number of reacted neighbors and the total amount of neighbors"""
+        returns (int, int) a tuple with the number of reacted neighbors and the total amount of neighbors"""
         n = rhomb.neighbors[order - 1]
         count = 0
         amount = 0
@@ -383,14 +389,16 @@ class Kagome():
 
 
     def generate_seeds(self, seeds):
-        """Turns a given number of rhombs at random locations to a reacted state.
-        seeds ... int number of how many rhombs should be turned into the reacted state"""
+        """
+        Turns a given number of rhombs at random locations into a reacted state.
+        seeds ... int number of how many rhombs should be turned into the reacted state
+        """
         self.rhombColor = 'blue' # change of color to highlight the random seeds
         for i in range(seeds):
             coords = self.get_random_point()
             # set the new state and mark it
             self.lattice[coords[1]][coords[0]].reacted = True
             self.rhomb_at_kagome(coords[0], coords[1])
-        self.rhombColor = 'red'
+        self.rhombColor = 'red' # revert color
         self.draw_tiling()
-        self.save_image("start")
+        self.save_image("start.png")
