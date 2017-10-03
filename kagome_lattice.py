@@ -312,8 +312,8 @@ class Kagome():
                 print("Current step: %i, conversion is %0.02f" % (t, converted / self.numberAllLatticePoints), end='\r')
             else:
                 print("Current step: %i of %i" % (t + 1, tMax), end='\r')
-            # for y in range(len(self.lattice)):
-            #     for x in range(len(self.lattice[y])):
+
+            # select a rhomb a do stuff with it
             x, y = self.get_random_point()
             r = self.getRhomb(x, y)
             if not r.reacted:
@@ -376,7 +376,8 @@ class Kagome():
         """Counts how mean of the neighbors of a given order have reacted.
         rhomb ... rhomb center of neighbor finding
         order ... order of the nearest neighbor
-        returns (int, int) a tuple with the number of reacted neighbors and the total amount of neighbors"""
+        returns (int, int) a tuple with the number of reacted neighbors and the total amount of neighbors
+        """
         n = rhomb.neighbors[order - 1]
         count = 0
         amount = 0
