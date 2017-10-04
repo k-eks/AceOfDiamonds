@@ -1,12 +1,12 @@
 import numpy as np
 
+# maximum possible number of neighbors by neighbor order a single rhomb can have
+MAXNEIGHBORS = [4, 8, 14, 18, 22, 28, 30, 38, 38, 48]
+
 class Rhomb():
     """
     Representation of a node on the Kagome lattice.
     """
-
-    # maximum possible number of neighbors by neighbor order a single rhomb can have
-    MAXNEIGHBORS = [4, 8, 14, 18, 22, 28, 30, 38, 38, 48]
 
     def __init__(self, x, y, latticeWidth, latticeHeight):
         self.x = x
