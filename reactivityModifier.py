@@ -1,3 +1,5 @@
+import rhomb
+
 class ReactivityModifier():
     """
     We define reactivity as r being the probability of reactivity in a site where its neighbor has already reacted and 1 - r being the probability of reaction if the site has unreacted neighbors.
@@ -30,4 +32,4 @@ class ReactivityModifier():
         Creates the r - 1 condition for the rule itself
         returns ReactivityModifier the r - 1 condition for itself
         """
-        return ReactivityModifier(1 - self.r, self.neighborOrder, self.unreactedLateralNeighborsRequired, self.reactedLateralNeighborsRequired)
+        return ReactivityModifier(1 - self.r, self.neighborOrder, rhomb.MAXNEIGHBORS[self.neighborOrder - 1] - self.unreactedLateralNeighborsRequired + 1, rhomb.MAXNEIGHBORS[self.neighborOrder - 1] - self.reactedLateralNeighborsRequired + 1)
