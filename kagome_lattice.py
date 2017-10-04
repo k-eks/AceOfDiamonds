@@ -1,4 +1,5 @@
 import rhomb
+import reactivityModifier
 import math
 import log
 import corr
@@ -47,8 +48,6 @@ class Kagome():
         self.log.log_text("Program initialized")
         self.log_conversion = log.Logger("conversion", self.outputFolder)
         self.log.log_text("Conversion log created")
-        self.log_pair = log.Logger("pair_%s" % self.modelName, self.outputFolder)
-        self.log.log_text("Pair correlation log created")
 
         # set pixel dimensions for drawing
         self.latticeWidth = latticeWidth
@@ -82,11 +81,6 @@ class Kagome():
         self.rhombCount = self.latticePointsY * self.latticePointsX / 2 + self.latticePointsY * self.latticePointsX / 4
         self.log.log_text("Lattice created")
         self.log.log_text("Created %i rhombs" % self.rhombCount)
-
-        # generate reaction points
-        self.reactionSites = self.generate_lattice_array()
-        # self.reset_reaction_sites()
-
 
     def __del__(self):
         """Destructor, cleaning up :) """
@@ -155,13 +149,6 @@ class Kagome():
         for i in range(len(reduced)):
             complete[i] = eval(reduced[i])
         return complete
-
-
-    @deprecated
-    def reset_reaction_sites(self):
-        """Resets the array which keeps track of the reactions that have taken place in a cycle."""
-        for y in range(len(self.lattice)):
-            self.reactionSites[y][:] = False
 
 
     def generate_lattice_array(self):
@@ -258,21 +245,21 @@ class Kagome():
         self.image.save(self.outputFolder + "%s.png" % cycle)
 
 
-    def model_neighbor_correlations(self, correlations, tMax, omega, seeds=0, imageCycle=0):
+    def model_neighbor_correlations(self, reactivityModifiers, MCcycleMax, seeds=0, imageCycle=0):
         """Run a Monte Carlo Simulation with neighbor correlations.
         correlations ... array of Correlation objecta of the desired neighbor correlations
-        tMax ... int number of how many time steps the simulation should run, -1 runs until 100 percent concersion is reached
+        MCcycleMax ... int number of how many time steps the simulation should run, -1 runs until 100 percent concersion is reached
         omega ... float base propability for dimerization
         pairCorrelations ... int number for how many neighbors pair correlations should be plotted, 0 -> derive from correlations
         seeds ... int number of randomly created seeds before the model should run
         imageCycle ... int determines after how many Monte Carlo iterations an image of the current state should be created and saved, a value of 0 turns it of"""
         # calculating the highest neighbor correlations
-        maxc = 1
-        for i in correlations:
-            maxc = max(maxc, i.order)
+        maxNeighborOrder = 1
+        for modifier in reactivityModifiers:
+            maxNeighborOrder = max(maxNeighborOrder, modifier.neighborOrder)
 
-        # calculating higher neighbors of rhombs
-        if maxc > 1:
+        # calculating higher neighbors of rhombs and building the grid
+        if maxNeighborOrder > 1:
             count = 0
             for y in range(len(self.lattice)):
                 for x in range(len(self.lattice[y])):
@@ -280,7 +267,7 @@ class Kagome():
                     rhomb = self.getRhomb(x, y)
                     completeShells = 1 # first neighbor are already known
                     # run through increasing neighboring shells and fill them with neighbors
-                    while completeShells < maxc:
+                    while completeShells < maxNeighborOrder:
                         print("Working on neighbor %i of rhomb %i of %i      " % (completeShells + 1, count, self.rhombCount), end='\r')
                         # special case for the second neighbors
                         if completeShells == 1:
@@ -302,54 +289,47 @@ class Kagome():
             converted += seeds
 
         print("Starting MC simulation...")
-        # write header
-        self.log_pair.log_simple_text("t_%s;conversion" % self.modelName)
         runSimulation = True
-        t = 0
+        MCcycle = 0
+        self.log.log_text("Starting MC simulation")
         while runSimulation:
             # each run is a single time step
-            if tMax == -1:
-                print("Current step: %i, conversion is %0.02f" % (t, converted / self.numberAllLatticePoints), end='\r')
+            if MCcycleMax == -1:
+                print("Current step: %i, conversion is %0.02f" % (MCcycle, converted / self.numberAllLatticePoints), end='\r')
             else:
-                print("Current step: %i of %i" % (t + 1, tMax), end='\r')
+                print("Current step: %i of %i" % (MCcycle + 1, MCcycleMax), end='\r')
 
             # select a rhomb a do stuff with it
             x, y = self.get_random_point()
-            r = self.getRhomb(x, y)
-            if not r.reacted:
-                p = omega
-                # modifiy omega according to correlations
-                for c in correlations:
-                    count, amount = self.count_reacted_neighbors(r, c.order)
-                    #print(c.order, count, amount)
-                    # not counting amount yet
-                    if count >= c.multR and count <= c.maxiR:
-                        p = p * c.propR
-                    else:
-                        p = p * c.propU
-                if random.random() < p:
-                    self.reactionSites[y][x] = True
+            currentRhomb = self.getRhomb(x, y)
+            if not currentRhomb.reacted:
+                chanceToReact = 1 # when a photon arrives, it reacts
+                # applying all modifiers to reactivity
+                for modifier in reactivityModifiers:
+                    if self.modifierApplies(currentRhomb, modifier):
+                        chanceToReact *= modifier.r
+
+                if random.random() <= chanceToReact:
                     self.lattice[y][x].reacted = True
                     converted += 1
-                    #self.rhomb_at_kagome(r.x, r.y)
 
             # save an image after ever imageCycle Monte Carlo interations
             if imageCycle > 0:
-                if t % 100 == 0:
-                    self.log_conversion.log_xy(t, converted / self.numberAllLatticePoints)
+                if MCcycle % imageCycle == 0:
+                    self.log_conversion.log_xy(MCcycle, converted / self.numberAllLatticePoints)
                     self.image = Image.new('RGB', self.image.size, 'white')
                     self.draw = ImageDraw.Draw(self.image)
                     self.draw_image()
-                    self.save_image(t)
+                    self.save_image(MCcycle)
 
             # step up in the Monte Carlo cycle
-            t += 1
+            MCcycle += 1
             # check if the simulation should continue or end
-            if tMax == -1:
+            if MCcycleMax == -1:
                 if converted >= self.numberAllLatticePoints:
                     runSimulation = False
             else:
-                if t >= tMax:
+                if MCcycle >= MCcycleMax:
                     runSimulation = False
         print("\nDone!")
         self.log.log_text("MC ended")
@@ -371,6 +351,21 @@ class Kagome():
         # ****************************************************************************
 
 
+    def modifierApplies(self, currentRhomb, modifier):
+        """
+        Verifies wether or not a given modifer apllies to a given rhomb.
+        currentRhomb ... rhomb the rhomb for which the reactivity conditions should be tested for
+        modifier ... ReactivityModifier the rule set which is tested
+        returns bool wether or not the given rule should be applied
+        """
+        reactedNeighbors, allNeighbors = self.count_reacted_neighbors(currentRhomb, modifier.neighborOrder)
+        unreactedNeighbors = allNeighbors - reactedNeighbors
+
+        # nan means that the modifier does not care about the number of neighbors
+        return ((math.isnan(modifier.reactedLateralNeighborsRequired) or (modifier.reactedLateralNeighborsRequired <= reactedNeighbors)) and
+               (math.isnan(modifier.unreactedLateralNeighborsRequired) or (modifier.unreactedLateralNeighborsRequired <= unreactedNeighbors)))
+
+
 
     def count_reacted_neighbors(self, rhomb, order):
         """Counts how mean of the neighbors of a given order have reacted.
@@ -378,15 +373,15 @@ class Kagome():
         order ... order of the nearest neighbor
         returns (int, int) a tuple with the number of reacted neighbors and the total amount of neighbors
         """
-        n = rhomb.neighbors[order - 1]
-        count = 0
-        amount = 0
+        neighborRhombs = rhomb.neighbors[order - 1]
+        reactedNeighbors = 0
+        allNeighbors = 0
         # count through the neighbors
-        for t in n:
-            amount += 1 # counts all possible neighbors, independent of their state
-            if self.getRhomb(t[0], t[1]).reacted:
-                count += 1 # counts all reacted neighbors
-        return count, amount
+        for currentRhomb in neighborRhombs:
+            allNeighbors += 1 # counts all possible neighbors, independent of their state
+            if self.getRhomb(currentRhomb[0], currentRhomb[1]).reacted:
+                reactedNeighbors += 1 # counts all reacted neighbors
+        return reactedNeighbors, allNeighbors
 
 
     def generate_seeds(self, seeds):
