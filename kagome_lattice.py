@@ -245,14 +245,14 @@ class Kagome():
         self.image.save(self.outputFolder + "%s.png" % cycle)
 
 
-    def model_neighbor_correlations(self, reactivityModifiers, MCcycleMax, seeds=0, imageCycle=0):
-        """Run a Monte Carlo Simulation with neighbor correlations.
-        correlations ... array of Correlation objecta of the desired neighbor correlations
-        MCcycleMax ... int number of how many time steps the simulation should run, -1 runs until 100 percent concersion is reached
-        omega ... float base propability for dimerization
-        pairCorrelations ... int number for how many neighbors pair correlations should be plotted, 0 -> derive from correlations
+    def model2DPropagation(self, reactivityModifiers, MCcycleMax, seeds=0, imageCycle=0):
+        """
+        Run a Monte Carlo Simulation with a given rule set.
+        reactivityModifiers ... array of ReactivityModifier rule set which is applied to the simulation
+        MCcycleMax ... int or float if int, this is the number of how many time steps the simulation should run, if float, simulation stops when the conversion reaches that value
         seeds ... int number of randomly created seeds before the model should run
-        imageCycle ... int determines after how many Monte Carlo iterations an image of the current state should be created and saved, a value of 0 turns it of"""
+        imageCycle ... int determines after how many Monte Carlo iterations an image of the current state should be created and saved, a value of 0 turns it of
+        """
         # calculating the highest neighbor correlations
         maxNeighborOrder = 1
         for modifier in reactivityModifiers:
@@ -294,7 +294,7 @@ class Kagome():
         self.log.log_text("Starting MC simulation")
         while runSimulation:
             # each run is a single time step
-            if MCcycleMax == -1:
+            if type(MCcycleMax) == float:
                 print("Current step: %i, conversion is %0.02f" % (MCcycle, converted / self.numberAllLatticePoints), end='\r')
             else:
                 print("Current step: %i of %i" % (MCcycle + 1, MCcycleMax), end='\r')
@@ -325,10 +325,10 @@ class Kagome():
             # step up in the Monte Carlo cycle
             MCcycle += 1
             # check if the simulation should continue or end
-            if MCcycleMax == -1:
-                if converted >= self.numberAllLatticePoints:
+            if type(MCcycleMax) == float:
+                if converted / self.numberAllLatticePoints >= MCcycleMax:
                     runSimulation = False
-            else:
+            elif type(MCcycleMax) == int:
                 if MCcycle >= MCcycleMax:
                     runSimulation = False
         # writing out the last state
