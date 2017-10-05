@@ -331,6 +331,13 @@ class Kagome():
             else:
                 if MCcycle >= MCcycleMax:
                     runSimulation = False
+        # writing out the last state
+        self.log_conversion.log_xy(MCcycle, converted / self.numberAllLatticePoints)
+        self.image = Image.new('RGB', self.image.size, 'white')
+        self.draw = ImageDraw.Draw(self.image)
+        self.draw_image()
+        self.save_image(MCcycle)
+
         print("\nDone!")
         self.log.log_text("MC ended")
 
